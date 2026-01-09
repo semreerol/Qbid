@@ -1,11 +1,32 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from . import models, schemas, crud
+from .database import SessionLocal, engine
 
-app = FastAPI(title="Qbid API", version="0.1.0")
+# 1. Veritabanı tablolarını oluştur (Eğer yoksa)
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Qbid API")
+
+# Dependency: Her istekte veritabanını aç, iş bitince kapat.
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @app.get("/")
 def read_root():
-    return {"message": "Qbid API çalışıyor!", "status": "active"}
+    return {"message": "Qbid API Hazır!"}
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+# --- KULLANICI İŞLEMLERİ ---
+
+@app.post("/users/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    # Önce bu email var mı kontrol et
+    db_user = crud.get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Bu email zaten kayıtlı")
+    # Yoksa oluştur
+    return crud.create_user(db=db, user=user)
