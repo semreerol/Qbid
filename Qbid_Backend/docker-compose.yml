@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # 1. Servis: Bizim Python Uygulamamız
+  web:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/code  # Bilgisayarındaki kod değişikliğini anında içeri yansıt (Hot Reload)
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://qbid_user:qbid_password@db:5432/qbid_local_db
+    depends_on:
+      - db
+
+  # 2. Servis: Yerel Veritabanımız
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Veriler kaybolmasın diye hacim oluştur
+    environment:
+      - POSTGRES_USER=qbid_user
+      - POSTGRES_PASSWORD=qbid_password
+      - POSTGRES_DB=qbid_local_db
+    ports:
+      - "5433:5432"
+
+volumes:
+  postgres_data:
